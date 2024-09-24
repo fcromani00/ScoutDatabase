@@ -24,13 +24,13 @@ st.subheader('Player👤')
 player_name = st.selectbox('Player Name',sorted(list(dados['Short Name'].unique())))
 dados = dados[dados['Short Name'] == player_name]
 performance = pd.merge(left=dados, right=performance, how='left', left_on='Player ID', right_on='Player ID')
-performance_df = performance[['Season','Tournament','Games','Wins','Draws','Losses','Goal Difference','Minutes','Starting XI','Used Sub','Goals Scored','Assists','Own Goals','Yellow Cards','Double Yellows','Red Cards']]
+performance_df = performance[['Season','Tournament','Games','Wins','Draws','Losses','Goal Difference','Minutes','Starting XI','Used Sub','Goals Scored','Assists','Own Goals','Yellow Cards','Double Yellows','Red Cards']]#, 'Goals Conceded'
 
 col1, col2, col3 = st.columns([4,1,1])
 with col1:
     st.subheader(dados['Full Name'].iloc[0])
     st.write(f"Age: {dados['Age'].iloc[0]}")
-    st.write(f"Birth Date: {dados['Birth Date'].iloc[0].strftime('%Y/%m/%d')}")
+    # st.write(f"Birth Date: {dados['Birth Date'].iloc[0].strftime('%Y/%m/%d')}")
     st.write(f"Height: {int(dados['Height (cm)'].iloc[0])}cm")
     st.write(f"Position: {dados['Position'].iloc[0]}")
     st.write(f"Market Value: {dados['Market Value'].iloc[0]}")

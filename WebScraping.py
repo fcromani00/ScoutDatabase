@@ -366,7 +366,7 @@ def scraping_playmaker(link_PMS):
     season = soup.find("h2",class_='header').get_text(strip=True)
     current_season = int(re.search(r'Summary\s+(\d{4}(?:/\d{4})?)', season).group(1).strip())
     results_current_season_link = urljoin(link_PMS, soup.find('div', class_='footer').find('a').get('href'))
-
+    
     # Extrai o epoca_id
     epoca_id = int(re.search(r'epoca_id=(\d+)', results_current_season_link).group(1))
 
@@ -377,14 +377,25 @@ def scraping_playmaker(link_PMS):
         re.sub(r'epoca_id=\d+', f'epoca_id={epoca_id - i}', results_current_season_link)
         for i in range(1, 3)
     ]
+    
+
+    
     seasons_results = pd.DataFrame()
     season_year = current_season
+    
     for result_link in results_links:
       try:
         response = requests.get(result_link, headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}) # Acessando link
         soup = BeautifulSoup(response.content, "html.parser")
         table = StringIO(str(soup.find('table', {'class': 'zztable stats'})))
         season_result = pd.read_html(table)[0]
+        
+        if 'GC' not in season_result.columns:
+          season_result['GC'] = 0
+        
+        if 'GS' not in season_result.columns:
+          season_result['GS'] = 0
+        
         del season_result['Unnamed: 15']
         season_result['Season'] = current_season
         season_result = season_result.rename(columns={
@@ -402,7 +413,8 @@ def scraping_playmaker(link_PMS):
           'OG': 'Own Goals',
           'YC': 'Yellow Cards',
           '2Y': 'Double Yellows',
-          'RC': 'Red Cards'})
+          'RC': 'Red Cards',
+          'GC': 'Goals Conceded'})
         season_result = season_result.dropna(subset=['Tournament'])
         seasons_results = pd.concat([seasons_results, season_result], ignore_index=True)
         current_season = current_season -1
@@ -411,9 +423,9 @@ def scraping_playmaker(link_PMS):
     seasons_results['Player ID'] = dict_playmaker['Player ID']
   except:
     seasons_results = pd.DataFrame()
-  print(dict_playmaker)#, seasons_results)
+  
+  print(dict_playmaker, seasons_results)
   return dict_playmaker, seasons_results
-#######################################################################################################################################
 
 def refresh_database(database):
   import pandas as pd
@@ -428,7 +440,7 @@ def refresh_database(database):
 
   for index,row in players[['Transfermarkt Profile', 'PlaymakerStats Profile']].iterrows():
       dict_scoutdatabase = {
-        'Player ID':'000000',
+        'Player ID':pd.NA,
         'Short Name': pd.NA,
         'Full Name': pd.NA,
         'Birth Date': pd.NA,
@@ -453,8 +465,10 @@ def refresh_database(database):
         'Transfermarkt Profile': pd.NA,
         'PlaymakerStats Profile': pd.NA
       }
+    
       dict_playmaker = dict_scoutdatabase
       dict_transfermarkt = dict_scoutdatabase
+    
       seasons_results_df = pd.DataFrame()
       df_player_info = pd.DataFrame()
     
@@ -482,4 +496,132 @@ def refresh_database(database):
     
   refresh_players.to_sql('players', conn, if_exists='replace', index=False)
   refresh_performance.to_sql('performance_seasons', conn, if_exists='replace', index=False)
+  conn.close()
+
+def add_new_player(dict_scoutdatabase,df_player_performance, db):
+  import sqlite3
+  import pandas as pd
+  
+  test_conn = sqlite3.connect(db)
+  test_cur = test_conn.cursor()
+
+  dict_scoutdatabase = {
+      key: value if not pd.isna(value) else (None if isinstance(value, (int, float)) else '')
+      for key, value in dict_scoutdatabase.items()
+  }
+
+  test_cur.execute(f'''
+    INSERT INTO "players" (
+      "Player ID",
+      "Short Name",
+      "Full Name",
+      "Birth Date",
+      "Age" ,
+      "Nationality",
+      "Citizenship",
+      "Team",
+      "Position",
+      "Market Value",
+      "Foot" ,
+      "Height (cm)",
+      "Player Agent",
+      "Player Agent Link",
+      "Contract Expires",
+      "On Loan",
+      "Loan Contract Expires",
+      "On Loan From",
+      "Instagram",
+      "Flag img url",
+      "Player img url",
+      "Team img url",
+      "Transfermarkt Profile",
+      "PlaymakerStats Profile"
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+     (dict_scoutdatabase['Player ID'],
+      dict_scoutdatabase['Short Name'],
+      dict_scoutdatabase['Full Name'],
+      dict_scoutdatabase['Birth Date'],
+      dict_scoutdatabase['Age'],
+      dict_scoutdatabase['Nationality'],
+      dict_scoutdatabase['Citizenship'],
+      dict_scoutdatabase['Team'],
+      dict_scoutdatabase['Position'],
+      dict_scoutdatabase['Market Value'],
+      dict_scoutdatabase['Foot'],
+      dict_scoutdatabase['Height (cm)'],
+      dict_scoutdatabase['Player Agent'],
+      dict_scoutdatabase['Player Agent Link'],
+      dict_scoutdatabase['Contract Expires'],
+      dict_scoutdatabase['On Loan'],
+      dict_scoutdatabase['Loan Contract Expires'],
+      dict_scoutdatabase['On Loan From'],
+      dict_scoutdatabase['Instagram'],
+      dict_scoutdatabase['Flag img url'],
+      dict_scoutdatabase['Player img url'],
+      dict_scoutdatabase['Team img url'],
+      dict_scoutdatabase['Transfermarkt Profile'],
+      dict_scoutdatabase['PlaymakerStats Profile']
+    ))
+  # test_conn.commit()
+
+  for index, row in df_player_performance.iterrows():
+    test_cur.execute("""
+        INSERT INTO "performance_seasons" (
+          "Tournament"
+        , "Games"
+        , "Wins"
+        , "Draws"
+        , "Losses"
+        , "Goal Difference"
+        , "Minutes"
+        , "Starting XI"
+        , "Used Sub"
+        , "Goals Scored"
+        , "Assists"
+        , "Own Goals"
+        , "Yellow Cards"
+        , "Double Yellows"
+        , "Red Cards"
+        , "Goals Conceded"
+        , "Season"
+        , "Player ID"
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (row['Tournament'],
+            row['Games'],
+            row['Wins'],
+            row['Draws'],
+            row['Losses'],
+            row['Goal Difference'],
+            row['Minutes'],
+            row['Starting XI'],
+            row['Used Sub'],
+            row['Goals Scored'],
+            row['Assists'],
+            row['Own Goals'],
+            row['Yellow Cards'],
+            row['Double Yellows'],
+            row['Red Cards'],
+            row['Goals Conceded'],
+            row['Season'],
+            row['Player ID']
+        )
+    )
+    print(row)
+    # test_conn.commit()
+  
+  test_conn.commit()
+  test_conn.close()
+
+
+def remove_player(player_id, db):
+  import sqlite3
+
+  conn = sqlite3.connect(db)
+  cur = conn.cursor()
+  
+  cur.execute("""DELETE FROM players WHERE "Player ID" = ?""", (player_id,))
+  
+  conn.commit()
   conn.close()

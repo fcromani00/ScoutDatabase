@@ -72,8 +72,8 @@ with st.form('form_insert_player'):
 
       df_player_info = pd.DataFrame([dict_scoutdatabase])
 
-    except:
-      st.write('Error: Please check the link and try again')
+    # except:
+    #   st.write('Error: Please check the link and try again')
 
 st.write('---')
 

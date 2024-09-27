@@ -56,7 +56,7 @@ with st.form('form_insert_player'):
 
   submit = st.form_submit_button("Get Data")
   if submit:
-    try:
+    # try:
       if link_TF != '':
         dict_transfermarkt = scraping_transfermarkt(link_TF)
       if link_PMS != '':

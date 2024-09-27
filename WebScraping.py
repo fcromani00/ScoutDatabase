@@ -431,7 +431,7 @@ def refresh_database(database):
   import pandas as pd
   import sqlite3
   
-  conn = sqlite3.connect(database)
+  conn = sqlite3.connect(database, check_same_thread=False)
   players = pd.read_sql('SELECT * FROM players', conn)
   refresh_players = pd.DataFrame()
   
@@ -502,7 +502,7 @@ def add_new_player(dict_scoutdatabase,df_player_performance, db):
   import sqlite3
   import pandas as pd
   
-  test_conn = sqlite3.connect(db)
+  test_conn = sqlite3.connect(db, check_same_thread=False)
   test_cur = test_conn.cursor()
 
   dict_scoutdatabase = {
@@ -614,11 +614,10 @@ def add_new_player(dict_scoutdatabase,df_player_performance, db):
   test_conn.commit()
   test_conn.close()
 
-
 def remove_player(player_id, db):
   import sqlite3
 
-  conn = sqlite3.connect(db)
+  conn = sqlite3.connect(db, check_same_thread=False)
   cur = conn.cursor()
   
   cur.execute("""DELETE FROM players WHERE "Player ID" = ?""", (player_id,))

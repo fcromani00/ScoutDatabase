@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -7,7 +9,7 @@ from WebScraping import refresh_database
 st.set_page_config(page_title="ScoutDatabase", page_icon="⚽", layout="wide")#🌎
 @st.cache_data
 def carregar_dados():
-    conn = sqlite3.connect('ScoutDatabase.db')
+    conn = sqlite3.connect('ScoutDatabase.db', check_same_thread=False)
     tabela = pd.read_sql('SELECT * FROM players',conn)
     tabela['Height (cm)'] = pd.to_numeric(tabela['Height (cm)'], errors='coerce')  # Converter para numérico
     tabela['Height (cm)'] = tabela['Height (cm)'].fillna(0).astype('int64')  # Substituir NaN por 0 e converter para int64

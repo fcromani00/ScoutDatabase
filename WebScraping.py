@@ -24,7 +24,6 @@ def scraping_transfermarkt(link_TF):
     'Loan Contract Expires' : pd.NA,
     'On Loan From': pd.NA,
     'Instagram': pd.NA,
-    'Flag img url':pd.NA,
     'Player img url':pd.NA,
     'Team img url':  pd.NA,
     'Transfermarkt Profile': link_TF,
@@ -210,6 +209,7 @@ def scraping_playmaker(link_PMS):
   import pandas as pd
   from io import StringIO
   from urllib.parse import urljoin
+  import time
 
   dict_playmaker = { # Criando dict pra armazenar as informações
       'Player ID':'000000',
@@ -233,17 +233,20 @@ def scraping_playmaker(link_PMS):
       'Player img url':pd.NA,
       'Team img url':pd.NA,
       'Instagram':pd.NA,
-      'Flag img url':pd.NA,
       'Transfermarkt Profile': pd.NA,
       'PlaymakerStats Profile': link_PMS
   }
-  response = requests.get(link_PMS, headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}) # Acessando link
+
+
+  response = requests.get(link_PMS, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'})
   soup = BeautifulSoup(response.content, "html.parser")
-
-
-  profile_soup = soup.find('div', class_='rbbox nofooter') # Extraindo a soup da div do PROFILE
-  divs_bio_half = profile_soup.find_all('div', class_='bio_half')# Extraindo as divs que são da class bio_half
-  divs_bio = profile_soup.find_all('div', class_='bio')
+  
+  try:
+    profile_soup = soup.find('div', class_='rbbox nofooter')  # Extraindo a div do PROFILE
+    divs_bio_half = profile_soup.find_all('div', class_='bio_half')
+    divs_bio = profile_soup.find_all('div', class_='bio')
+  except:
+    print("Erro ao extrair o div do PROFILE")
 
   #Player ID
   try:
@@ -352,21 +355,23 @@ def scraping_playmaker(link_PMS):
     dict_playmaker['Team img url'] = pd.NA
 
   # Instagram
-  for div in divs_bio:
-    if 'Other connections' in div.text:
-      try:
-        instagram_link = div.find('a', href=re.compile(r'https://www.instagram.com/'))['href']
-        dict_playmaker['Instagram'] = "@" + re.search(r'https://www.instagram.com/([^/]+)', instagram_link).group(1)
-        break  # Se encontrar o Instagram, saia do loop
-      except:
-        dict_playmaker['Instagram'] = pd.NA
-
+  try:
+    for div in divs_bio:
+      if 'Other connections' in div.text:
+        try:
+          instagram_link = div.find('a', href=re.compile(r'https://www.instagram.com/'))['href']
+          dict_playmaker['Instagram'] = "@" + re.search(r'https://www.instagram.com/([^/]+)', instagram_link).group(1)
+          break  # Se encontrar o Instagram, saia do loop
+        except:
+          dict_playmaker['Instagram'] = pd.NA
+  except:
+    dict_playmaker['Instagram'] = pd.NA
   #Extracting seasons data
   try:
     season = soup.find("h2",class_='header').get_text(strip=True)
     current_season = int(re.search(r'Summary\s+(\d{4}(?:/\d{4})?)', season).group(1).strip())
     results_current_season_link = urljoin(link_PMS, soup.find('div', class_='footer').find('a').get('href'))
-    
+
     # Extrai o epoca_id
     epoca_id = int(re.search(r'epoca_id=(\d+)', results_current_season_link).group(1))
 
@@ -377,25 +382,23 @@ def scraping_playmaker(link_PMS):
         re.sub(r'epoca_id=\d+', f'epoca_id={epoca_id - i}', results_current_season_link)
         for i in range(1, 3)
     ]
-    
 
-    
     seasons_results = pd.DataFrame()
     season_year = current_season
-    
+
     for result_link in results_links:
       try:
         response = requests.get(result_link, headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}) # Acessando link
         soup = BeautifulSoup(response.content, "html.parser")
         table = StringIO(str(soup.find('table', {'class': 'zztable stats'})))
         season_result = pd.read_html(table)[0]
-        
+
         if 'GC' not in season_result.columns:
           season_result['GC'] = 0
-        
+
         if 'GS' not in season_result.columns:
           season_result['GS'] = 0
-        
+
         del season_result['Unnamed: 15']
         season_result['Season'] = current_season
         season_result = season_result.rename(columns={
@@ -423,21 +426,23 @@ def scraping_playmaker(link_PMS):
     seasons_results['Player ID'] = dict_playmaker['Player ID']
   except:
     seasons_results = pd.DataFrame()
-  
+
   print(dict_playmaker, seasons_results)
   return dict_playmaker, seasons_results
 
-def refresh_database(database):
+def refresh_database():  
+  import pygsheets
   import pandas as pd
-  import sqlite3
-  
-  conn = sqlite3.connect(database, check_same_thread=False)
-  players = pd.read_sql('SELECT * FROM players', conn)
-  refresh_players = pd.DataFrame()
-  
-  performance = pd.read_sql('SELECT * FROM performance_seasons', conn)
-  refresh_performance = pd.DataFrame()
 
+  credencials = pygsheets.authorize(service_file='cred.json')
+  archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
+  players_tb = archive.worksheet_by_title('players')
+  players = pd.DataFrame(players_tb.get_all_records())
+  refresh_players = pd.DataFrame()
+
+  performance_tb = archive.worksheet_by_title('performance_seasons')
+  refresh_performance = pd.DataFrame()
+  
   for index,row in players[['Transfermarkt Profile', 'PlaymakerStats Profile']].iterrows():
       dict_scoutdatabase = {
         'Player ID':pd.NA,
@@ -459,7 +464,6 @@ def refresh_database(database):
         'Loan Contract Expires' : pd.NA,
         'On Loan From': pd.NA,
         'Instagram': pd.NA,
-        'Flag img url':pd.NA,
         'Player img url':pd.NA,
         'Team img url':  pd.NA,
         'Transfermarkt Profile': pd.NA,
@@ -473,11 +477,11 @@ def refresh_database(database):
       df_player_info = pd.DataFrame()
     
       link_TF = row.iloc[0] # Pegando o link na base_links['LINK Transfermarkt']
-      if link_TF != None:
+      if pd.notna(link_TF) and link_TF.strip() != '':
         dict_transfermarkt = scraping_transfermarkt(link_TF) # Fazendo scraping utilizando o link
 
       link_PMS = row.iloc[1] # Pegando o link na base_links['LINK Playmaker']
-      if link_PMS != None:
+      if pd.notna(link_PMS) and link_PMS.strip() != '':
         dict_playmaker, seasons_results_df = scraping_playmaker(link_PMS) # Fazendo scraping utilizando o link
       refresh_performance = pd.concat([refresh_performance, seasons_results_df], ignore_index=True)
 
@@ -494,133 +498,183 @@ def refresh_database(database):
 
       refresh_players = pd.concat([refresh_players, df_player_info], ignore_index=True)
     
-  refresh_players.to_sql('players', conn, if_exists='replace', index=False)
-  refresh_performance.to_sql('performance_seasons', conn, if_exists='replace', index=False)
-  conn.close()
+  players_tb.clear()
+  players_tb.set_dataframe(refresh_players, (1,1))
 
-def add_new_player(dict_scoutdatabase,df_player_performance, db):
-  import sqlite3
+  performance_tb.clear()
+  performance_tb.set_dataframe(refresh_performance, (1,1))
+
+def add_new_player(dict_scoutdatabase,df_player_performance):
   import pandas as pd
+  import pygsheets
+
+  credencials = pygsheets.authorize(service_file='cred.json')
+  archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
+  players_tb = archive.worksheet_by_title('players')
+  performance_tb = archive.worksheet_by_title('performance_seasons')
   
-  test_conn = sqlite3.connect(db, check_same_thread=False)
-  test_cur = test_conn.cursor()
+  players = pd.DataFrame(players_tb.get_all_records())
+  performance = pd.DataFrame(performance_tb.get_all_records())
 
-  dict_scoutdatabase = {
-      key: value if not pd.isna(value) else (None if isinstance(value, (int, float)) else '')
-      for key, value in dict_scoutdatabase.items()
-  }
+  new_player_df = pd.DataFrame([dict_scoutdatabase])
+  new_player_performance_df = df_player_performance
 
-  test_cur.execute(f'''
-    INSERT INTO "players" (
-      "Player ID",
-      "Short Name",
-      "Full Name",
-      "Birth Date",
-      "Age" ,
-      "Nationality",
-      "Citizenship",
-      "Team",
-      "Position",
-      "Market Value",
-      "Foot" ,
-      "Height (cm)",
-      "Player Agent",
-      "Player Agent Link",
-      "Contract Expires",
-      "On Loan",
-      "Loan Contract Expires",
-      "On Loan From",
-      "Instagram",
-      "Flag img url",
-      "Player img url",
-      "Team img url",
-      "Transfermarkt Profile",
-      "PlaymakerStats Profile"
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-     (dict_scoutdatabase['Player ID'],
-      dict_scoutdatabase['Short Name'],
-      dict_scoutdatabase['Full Name'],
-      dict_scoutdatabase['Birth Date'],
-      dict_scoutdatabase['Age'],
-      dict_scoutdatabase['Nationality'],
-      dict_scoutdatabase['Citizenship'],
-      dict_scoutdatabase['Team'],
-      dict_scoutdatabase['Position'],
-      dict_scoutdatabase['Market Value'],
-      dict_scoutdatabase['Foot'],
-      dict_scoutdatabase['Height (cm)'],
-      dict_scoutdatabase['Player Agent'],
-      dict_scoutdatabase['Player Agent Link'],
-      dict_scoutdatabase['Contract Expires'],
-      dict_scoutdatabase['On Loan'],
-      dict_scoutdatabase['Loan Contract Expires'],
-      dict_scoutdatabase['On Loan From'],
-      dict_scoutdatabase['Instagram'],
-      dict_scoutdatabase['Flag img url'],
-      dict_scoutdatabase['Player img url'],
-      dict_scoutdatabase['Team img url'],
-      dict_scoutdatabase['Transfermarkt Profile'],
-      dict_scoutdatabase['PlaymakerStats Profile']
-    ))
-  # test_conn.commit()
+  players = pd.concat([players, new_player_df], ignore_index=True)
+  performance = pd.concat([performance, new_player_performance_df], ignore_index=True)
 
-  for index, row in df_player_performance.iterrows():
-    test_cur.execute("""
-        INSERT INTO "performance_seasons" (
-          "Tournament"
-        , "Games"
-        , "Wins"
-        , "Draws"
-        , "Losses"
-        , "Goal Difference"
-        , "Minutes"
-        , "Starting XI"
-        , "Used Sub"
-        , "Goals Scored"
-        , "Assists"
-        , "Own Goals"
-        , "Yellow Cards"
-        , "Double Yellows"
-        , "Red Cards"
-        , "Goals Conceded"
-        , "Season"
-        , "Player ID"
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-           (row['Tournament'],
-            row['Games'],
-            row['Wins'],
-            row['Draws'],
-            row['Losses'],
-            row['Goal Difference'],
-            row['Minutes'],
-            row['Starting XI'],
-            row['Used Sub'],
-            row['Goals Scored'],
-            row['Assists'],
-            row['Own Goals'],
-            row['Yellow Cards'],
-            row['Double Yellows'],
-            row['Red Cards'],
-            row['Goals Conceded'],
-            row['Season'],
-            row['Player ID']
-        )
-    )
-    print(row)
-    # test_conn.commit()
+  players_tb.clear()
+  players_tb.set_dataframe(players, (1,1))
+
+  performance_tb.clear()
+  performance_tb.set_dataframe(performance, (1,1))
+
+
+def remove_player(player_id):
+  import pandas as pd
+  import pygsheets
+
+  credencials = pygsheets.authorize(service_file='cred.json')
+  archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
+  players_tb = archive.worksheet_by_title('players')
+  performance_tb = archive.worksheet_by_title('performance_seasons')
+
+  players = pd.DataFrame(players_tb.get_all_records())
+  performance = pd.DataFrame(performance_tb.get_all_records())
+
+  players = players[players['Player ID'] != player_id]
+  performance = performance[performance['Player ID'] != player_id]
+
+  players_tb.clear()
+  players_tb.set_dataframe(players, (1,1))
+
+  performance_tb.clear()
+  performance_tb.set_dataframe(performance, (1,1))
   
-  test_conn.commit()
-  test_conn.close()
-
-def remove_player(player_id, db):
-  import sqlite3
-
-  conn = sqlite3.connect(db, check_same_thread=False)
-  cur = conn.cursor()
   
-  cur.execute("""DELETE FROM players WHERE "Player ID" = ?""", (player_id,))
   
-  conn.commit()
-  conn.close()
+  
+#   import sqlite3
+#   import pandas as pd
+  
+#   test_conn = sqlite3.connect(db, check_same_thread=False)
+#   test_cur = test_conn.cursor()
+
+#   dict_scoutdatabase = {
+#       key: value if not pd.isna(value) else (None if isinstance(value, (int, float)) else '')
+#       for key, value in dict_scoutdatabase.items()
+#   }
+
+#   test_cur.execute(f'''
+#     INSERT INTO "players" (
+#       "Player ID",
+#       "Short Name",
+#       "Full Name",
+#       "Birth Date",
+#       "Age" ,
+#       "Nationality",
+#       "Citizenship",
+#       "Team",
+#       "Position",
+#       "Market Value",
+#       "Foot" ,
+#       "Height (cm)",
+#       "Player Agent",
+#       "Player Agent Link",
+#       "Contract Expires",
+#       "On Loan",
+#       "Loan Contract Expires",
+#       "On Loan From",
+#       "Instagram",
+#       "Flag img url",
+#       "Player img url",
+#       "Team img url",
+#       "Transfermarkt Profile",
+#       "PlaymakerStats Profile"
+#     )
+#     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+#      (dict_scoutdatabase['Player ID'],
+#       dict_scoutdatabase['Short Name'],
+#       dict_scoutdatabase['Full Name'],
+#       dict_scoutdatabase['Birth Date'],
+#       dict_scoutdatabase['Age'],
+#       dict_scoutdatabase['Nationality'],
+#       dict_scoutdatabase['Citizenship'],
+#       dict_scoutdatabase['Team'],
+#       dict_scoutdatabase['Position'],
+#       dict_scoutdatabase['Market Value'],
+#       dict_scoutdatabase['Foot'],
+#       dict_scoutdatabase['Height (cm)'],
+#       dict_scoutdatabase['Player Agent'],
+#       dict_scoutdatabase['Player Agent Link'],
+#       dict_scoutdatabase['Contract Expires'],
+#       dict_scoutdatabase['On Loan'],
+#       dict_scoutdatabase['Loan Contract Expires'],
+#       dict_scoutdatabase['On Loan From'],
+#       dict_scoutdatabase['Instagram'],
+#       dict_scoutdatabase['Flag img url'],
+#       dict_scoutdatabase['Player img url'],
+#       dict_scoutdatabase['Team img url'],
+#       dict_scoutdatabase['Transfermarkt Profile'],
+#       dict_scoutdatabase['PlaymakerStats Profile']
+#     ))
+#   # test_conn.commit()
+
+#   for index, row in df_player_performance.iterrows():
+#     test_cur.execute("""
+#         INSERT INTO "performance_seasons" (
+#           "Tournament"
+#         , "Games"
+#         , "Wins"
+#         , "Draws"
+#         , "Losses"
+#         , "Goal Difference"
+#         , "Minutes"
+#         , "Starting XI"
+#         , "Used Sub"
+#         , "Goals Scored"
+#         , "Assists"
+#         , "Own Goals"
+#         , "Yellow Cards"
+#         , "Double Yellows"
+#         , "Red Cards"
+#         , "Goals Conceded"
+#         , "Season"
+#         , "Player ID"
+#         )
+#         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+#            (row['Tournament'],
+#             row['Games'],
+#             row['Wins'],
+#             row['Draws'],
+#             row['Losses'],
+#             row['Goal Difference'],
+#             row['Minutes'],
+#             row['Starting XI'],
+#             row['Used Sub'],
+#             row['Goals Scored'],
+#             row['Assists'],
+#             row['Own Goals'],
+#             row['Yellow Cards'],
+#             row['Double Yellows'],
+#             row['Red Cards'],
+#             row['Goals Conceded'],
+#             row['Season'],
+#             row['Player ID']
+#         )
+#     )
+#     print(row)
+#     # test_conn.commit()
+  
+#   test_conn.commit()
+#   test_conn.close()
+
+# def remove_player(player_id, db):
+#   import sqlite3
+
+#   conn = sqlite3.connect(db, check_same_thread=False)
+#   cur = conn.cursor()
+  
+#   cur.execute("""DELETE FROM players WHERE "Player ID" = ?""", (player_id,))
+  
+#   conn.commit()
+#   conn.close()

@@ -1,5 +1,5 @@
 from WebScraping import remove_player
-from ScoutDatabase import carregar_dados
+from ScoutDatabase import load_data
 import streamlit as st
 
 
@@ -7,9 +7,9 @@ st.set_page_config('Remove Player', page_icon="⚽")
 
 st.title('Remove Player')
 
-player_name = st.selectbox('Choose the player to remove', st.session_state['dados']['Short Name'].unique())
+player_name = st.selectbox('Choose the player to remove', st.session_state['data']['Short Name'].unique())
 
-df_player_info = st.session_state.dados[st.session_state.dados['Short Name']==player_name]
+df_player_info = st.session_state.data[st.session_state.data['Short Name']==player_name]
 
 st.subheader(f"{df_player_info['Full Name'].iloc[0]} - {df_player_info['Team'].iloc[0]}")
 st.write(f"Position: {df_player_info['Position'].iloc[0]}")
@@ -21,9 +21,7 @@ st.session_state['player_id'] = df_player_info['Player ID'].iloc[0]
 
 remove = st.button('Remove Player')
 if remove:
-  remove_player(st.session_state.player_id, 'ScoutDatabase.db')
+  remove_player(st.session_state.player_id)
   del st.session_state.player_id
-  st.session_state.dados = carregar_dados()
+  st.cache_data.clear()
   st.success('Player removed successfully')
-
-st.write(st.session_state.player_id)

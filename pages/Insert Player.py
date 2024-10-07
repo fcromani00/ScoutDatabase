@@ -35,7 +35,6 @@ if 'dict_scoutdatabase' not in st.session_state:
   'Loan Contract Expires' : pd.NA,
   'On Loan From': pd.NA,
   'Instagram': pd.NA,
-  'Flag img url':pd.NA,
   'Player img url':pd.NA,
   'Team img url':  pd.NA,
   'Transfermarkt Profile': pd.NA,
@@ -85,7 +84,8 @@ st.data_editor(df_player_info,
 },
   hide_index=True)
 st.write('---')
-st.data_editor(df_player_performance)
+st.data_editor(df_player_performance
+               ,hide_index=True)
 
 if 'dict_scoutdatabase' in st.session_state:
   st.session_state['dict_scoutdatabase'] = dict_scoutdatabase
@@ -97,7 +97,8 @@ insert = st.button('Insert Player in ScoutDatabase')
 
 
 if insert:
-  add_new_player(st.session_state['dict_scoutdatabase'], st.session_state['df_player_performance'], 'ScoutDatabase.db')
+  add_new_player(st.session_state['dict_scoutdatabase'], st.session_state['df_player_performance'])
   del st.session_state['dict_scoutdatabase']
   del st.session_state['df_player_performance']
+  st.cache_data.clear()
   st.success('Player inserted successfully')

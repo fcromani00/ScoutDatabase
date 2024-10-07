@@ -2,81 +2,98 @@
 
 import streamlit as st
 import pandas as pd
-import sqlite3
+import pygsheets
 from WebScraping import refresh_database
 
-
 st.set_page_config(page_title="ScoutDatabase", page_icon="⚽", layout="wide")#🌎
-@st.cache_data
-def carregar_dados():
-    conn = sqlite3.connect('ScoutDatabase.db', check_same_thread=False)
-    tabela = pd.read_sql('SELECT * FROM players',conn)
-    tabela['Height (cm)'] = pd.to_numeric(tabela['Height (cm)'], errors='coerce')  # Converter para numérico
-    tabela['Height (cm)'] = tabela['Height (cm)'].fillna(0).astype('int64')  # Substituir NaN por 0 e converter para int64
 
-    tabela = tabela.astype({'Birth Date': 'datetime64[ns]', 'Contract Expires': 'datetime64[ns]','Loan Contract Expires': 'datetime64[ns]', 'Age':'int64', 'Height (cm)':'int64'})#, 'On Loan': 'boolean'
-    flags = pd.read_sql('SELECT * FROM flags',conn)
-    tabela = pd.merge(left=tabela, right=flags, how='left', left_on='Nationality', right_on='country')
-    tabela = tabela[
+@st.cache_data
+def load_data():
+    credencials = pygsheets.authorize(service_file='cred.json')
+    archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
+    
+    players_df = pd.DataFrame(archive.worksheet_by_title('players').get_all_records())
+    flags_df = pd.DataFrame(archive.worksheet_by_title('flags').get_all_records())
+    performance_seasons_df = pd.DataFrame(archive.worksheet_by_title('performance_seasons').get_all_records())
+    
+    scoutdatabase_df = pd.merge(left=players_df, right=flags_df, how='left', left_on='Nationality', right_on='country')
+    scoutdatabase_df = scoutdatabase_df[
         ['Position','Player img url', 'Short Name','Age','Team img url', 'flag_img_url',  'Team',  'Nationality',
          'Foot', 'On Loan', 'Height (cm)', 'Market Value', 'Birth Date', 'Contract Expires', 'Full Name',
          'On Loan From','Loan Contract Expires', 'Citizenship', 'Player Agent', 'Player Agent Link', 'Instagram', 'Player ID','Transfermarkt Profile', 'PlaymakerStats Profile']]
-    conn.close()
-    return tabela
+    return scoutdatabase_df, performance_seasons_df
 
-dados = carregar_dados()
-raw_data = dados.copy()
+data, performance_seasons_df = load_data()
+raw_data = data.copy()
 
-st.session_state['dados'] = dados
-
-
-
-#st.page_link('ScoutDatabase.py')
-#st.page_link("pages/Player.py")
+st.session_state['data'] = data
+st.session_state['performance_seasons_df'] = performance_seasons_df
 
 with st.container():
 
     st.title('ScoutDatabase🌎')
     st.subheader(f'{len(raw_data)} Players under monitoring')
     st.write('Data Sources:')
-    st.write('[Transfermarkt](https://www.transfermarkt.com/)')
-    st.write('[PlaymakerStats](https://www.playmakerstats.com/)')        
+    col1, col2 = st.columns([0.1, 1])  # Ajustando o tamanho das colunas para melhor proporção
+    col3, col4 = st.columns([0.1, 1])
+
+    # Transfermarkt
+    with col1:
+        transfermarkt_html = """
+        <a href="https://www.transfermarkt.com/" target="_blank">
+            <img src="https://i0.wp.com/pressfut.com/wp-content/uploads/2021/01/Transfermarkt_logo.png?fit=1020%2C680&ssl=1" width="60">
+        </a>
+        """
+        st.markdown(transfermarkt_html, unsafe_allow_html=True)
+    with col2:
+        st.markdown("[Transfermarkt](https://www.transfermarkt.com/)")
+
+    # PlaymakerStats
+    with col3:
+        playmaker_html = """
+        <a href="https://www.playmakerstats.com/" target="_blank">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Zerozero-logo.svg/165px-Zerozero-logo.svg.png" width="60">
+        </a>
+        """
+        st.markdown(playmaker_html, unsafe_allow_html=True)
+    with col4:
+        st.markdown("[PlaymakerStats](https://www.playmakerstats.com/)")        
 
 with st.sidebar:
     st.title('Filter Conditions🔍')
-    nationality = st.multiselect('Nationality', ['Any'] + sorted(list(dados['Nationality'].unique())), default=['Any'])
+    nationality = st.multiselect('Nationality', ['Any'] + sorted(list(data['Nationality'].unique())), default=['Any'])
     if 'Any' not in nationality:
-        dados = dados[dados['Nationality'].isin(nationality)]
+        data = data[data['Nationality'].isin(nationality)]
 
     age_min, age_max = st.slider(
         "Age",
         min_value=int(raw_data['Age'].min()),
         max_value=int(raw_data['Age'].max()),
-        value=[int(dados['Age'].min()), int(dados['Age'].max())]
+        value=[int(data['Age'].min()), int(data['Age'].max())]
     )
-    dados = dados[(dados['Age'] >= age_min) & (dados['Age'] <= age_max)]
+    data = data[(data['Age'] >= age_min) & (data['Age'] <= age_max)]
 
     height_min, height_max = st.slider(
         "Height (cm)",
         min_value=int(raw_data['Height (cm)'].min()),
         max_value=int(raw_data['Height (cm)'].max()),
-        value=[int(dados['Height (cm)'].min()), int(dados['Height (cm)'].max())]
+        value=[int(data['Height (cm)'].min()), int(data['Height (cm)'].max())]
     )
-    dados = dados[
-        (dados['Height (cm)'].isna()) | ((dados['Height (cm)'] >= height_min) & (dados['Height (cm)'] <= height_max))]
+    data = data[
+        (data['Height (cm)'].isna()) | ((data['Height (cm)'] >= height_min) & (data['Height (cm)'] <= height_max))]
 
-    foot = st.selectbox('Preferred Foot', ['Any'] + list(dados['Foot'].unique()))
+    foot = st.selectbox('Preferred Foot', ['Any'] + list(data['Foot'].unique()))
     if foot != 'Any':
-        dados = dados[dados['Foot'] == foot]
+        data = data[data['Foot'] == foot]
 
-    position = st.multiselect('Main Position', ['Any'] + sorted(list(dados['Position'].unique())), default=['Any'])
+    position = st.multiselect('Main Position', ['Any'] + sorted(list(data['Position'].unique())), default=['Any'])
     if 'Any' not in position:
-        dados = dados[dados['Position'].isin(position)]
+        data = data[data['Position'].isin(position)]
 
 with st.container():
     st.write('---')
 
-    scoutdatabase = st.data_editor(dados,
+    scoutdatabase = st.data_editor(data,
                         column_config={
                             "Player ID": None,
                             "Player img url": st.column_config.ImageColumn("Player", width='small'),
@@ -91,12 +108,14 @@ with st.container():
                             'On Loan': st.column_config.CheckboxColumn('On Loan', width='small')
                         },
                         hide_index=True,
-                        disabled=dados.columns
+                        disabled=data.columns
                     )
 
 refresh = st.button('Refresh Database')
 if refresh:
     with st.spinner('Atualizando a base de dados...'):
-        refresh_database('ScoutDatabase.db')
-        st.session_state['dados'] = carregar_dados()  # Recarrega os dados após o refresh
+        refresh_database()
+        st.session_state['data'] = load_data()
         st.success('Database refreshed com sucesso!')
+
+# st.write(st.cache_data)

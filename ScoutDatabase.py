@@ -16,7 +16,7 @@ def load_data():
         "type": st.secrets["google_creds"]["type"],
         "project_id": st.secrets["google_creds"]["project_id"],
         "private_key_id": st.secrets["google_creds"]["private_key_id"],
-        "private_key": st.secrets["google_creds"]["private_key"].replace('\\n', '\n'),  # Lidar com as novas linhas
+        "private_key": st.secrets["google_creds"]["private_key"].replace('\\n', '\n'),
         "client_email": st.secrets["google_creds"]["client_email"],
         "client_id": st.secrets["google_creds"]["client_id"],
         "auth_uri": st.secrets["google_creds"]["auth_uri"],

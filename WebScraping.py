@@ -433,8 +433,10 @@ def scraping_playmaker(link_PMS):
 def refresh_database():  
   import pygsheets
   import pandas as pd
+  import json
 
-  credencials = pygsheets.authorize(service_file='cred.json')
+  google_creds = json.loads(st.secrets["google_creds"])
+  credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   players = pd.DataFrame(players_tb.get_all_records())
@@ -507,8 +509,10 @@ def refresh_database():
 def add_new_player(dict_scoutdatabase,df_player_performance):
   import pandas as pd
   import pygsheets
+  import json
 
-  credencials = pygsheets.authorize(service_file='cred.json')
+  google_creds = json.loads(st.secrets["google_creds"])
+  credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   performance_tb = archive.worksheet_by_title('performance_seasons')
@@ -528,12 +532,13 @@ def add_new_player(dict_scoutdatabase,df_player_performance):
   performance_tb.clear()
   performance_tb.set_dataframe(performance, (1,1))
 
-
 def remove_player(player_id):
   import pandas as pd
   import pygsheets
+  import json
 
-  credencials = pygsheets.authorize(service_file='cred.json')
+  google_creds = json.loads(st.secrets["google_creds"])
+  credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   performance_tb = archive.worksheet_by_title('performance_seasons')

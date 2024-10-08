@@ -4,12 +4,14 @@ import streamlit as st
 import pandas as pd
 import pygsheets
 from WebScraping import refresh_database
+import json
 
 st.set_page_config(page_title="ScoutDatabase", page_icon="⚽", layout="wide")#🌎
 
 @st.cache_data
 def load_data():
-    credencials = pygsheets.authorize(service_file='cred.json')
+    google_creds = json.loads(st.secrets["google_creds"])
+    credencials = pygsheets.authorize(service_account_info=google_creds)
     archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
     
     players_df = pd.DataFrame(archive.worksheet_by_title('players').get_all_records())

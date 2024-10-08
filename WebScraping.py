@@ -433,9 +433,19 @@ def scraping_playmaker(link_PMS):
 def refresh_database():  
   import pygsheets
   import pandas as pd
-  import json
 
-  google_creds = json.loads(st.secrets["google_creds"])
+  google_creds = {
+    "type": st.secrets["google_creds"]["type"],
+    "project_id": st.secrets["google_creds"]["project_id"],
+    "private_key_id": st.secrets["google_creds"]["private_key_id"],
+    "private_key": st.secrets["google_creds"]["private_key"].replace('\\n', '\n'),  # Lidar com as novas linhas
+    "client_email": st.secrets["google_creds"]["client_email"],
+    "client_id": st.secrets["google_creds"]["client_id"],
+    "auth_uri": st.secrets["google_creds"]["auth_uri"],
+    "token_uri": st.secrets["google_creds"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
+}
   credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
@@ -509,9 +519,19 @@ def refresh_database():
 def add_new_player(dict_scoutdatabase,df_player_performance):
   import pandas as pd
   import pygsheets
-  import json
 
-  google_creds = json.loads(st.secrets["google_creds"])
+  google_creds = {
+    "type": st.secrets["google_creds"]["type"],
+    "project_id": st.secrets["google_creds"]["project_id"],
+    "private_key_id": st.secrets["google_creds"]["private_key_id"],
+    "private_key": st.secrets["google_creds"]["private_key"].replace('\\n', '\n'),  # Lidar com as novas linhas
+    "client_email": st.secrets["google_creds"]["client_email"],
+    "client_id": st.secrets["google_creds"]["client_id"],
+    "auth_uri": st.secrets["google_creds"]["auth_uri"],
+    "token_uri": st.secrets["google_creds"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
+}
   credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
@@ -535,9 +555,19 @@ def add_new_player(dict_scoutdatabase,df_player_performance):
 def remove_player(player_id):
   import pandas as pd
   import pygsheets
-  import json
 
-  google_creds = json.loads(st.secrets["google_creds"])
+  google_creds = {
+    "type": st.secrets["google_creds"]["type"],
+    "project_id": st.secrets["google_creds"]["project_id"],
+    "private_key_id": st.secrets["google_creds"]["private_key_id"],
+    "private_key": st.secrets["google_creds"]["private_key"].replace('\\n', '\n'),  # Lidar com as novas linhas
+    "client_email": st.secrets["google_creds"]["client_email"],
+    "client_id": st.secrets["google_creds"]["client_id"],
+    "auth_uri": st.secrets["google_creds"]["auth_uri"],
+    "token_uri": st.secrets["google_creds"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
+}
   credencials = pygsheets.authorize(service_account_info=google_creds)
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')

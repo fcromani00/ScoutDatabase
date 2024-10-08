@@ -433,8 +433,9 @@ def scraping_playmaker(link_PMS):
 def refresh_database():  
   import pygsheets
   import pandas as pd
+  import json
 
-  google_creds = {
+  google_creds = f'''{
     "type": st.secrets["google_creds"]["type"],
     "project_id": st.secrets["google_creds"]["project_id"],
     "private_key_id": st.secrets["google_creds"]["private_key_id"],
@@ -445,8 +446,8 @@ def refresh_database():
     "token_uri": st.secrets["google_creds"]["token_uri"],
     "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
     "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
-}
-  credencials = pygsheets.authorize(service_account_info=google_creds)
+}'''
+  credencials = pygsheets.authorize(service_file=json.loads(google_creds))
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   players = pd.DataFrame(players_tb.get_all_records())
@@ -519,8 +520,9 @@ def refresh_database():
 def add_new_player(dict_scoutdatabase,df_player_performance):
   import pandas as pd
   import pygsheets
+  import json
 
-  google_creds = {
+  google_creds = f'''{
     "type": st.secrets["google_creds"]["type"],
     "project_id": st.secrets["google_creds"]["project_id"],
     "private_key_id": st.secrets["google_creds"]["private_key_id"],
@@ -531,8 +533,8 @@ def add_new_player(dict_scoutdatabase,df_player_performance):
     "token_uri": st.secrets["google_creds"]["token_uri"],
     "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
     "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
-}
-  credencials = pygsheets.authorize(service_account_info=google_creds)
+}'''
+  credencials = pygsheets.authorize(service_file=json.loads(google_creds))
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   performance_tb = archive.worksheet_by_title('performance_seasons')
@@ -555,8 +557,9 @@ def add_new_player(dict_scoutdatabase,df_player_performance):
 def remove_player(player_id):
   import pandas as pd
   import pygsheets
+  import json
 
-  google_creds = {
+  google_creds = f'''{
     "type": st.secrets["google_creds"]["type"],
     "project_id": st.secrets["google_creds"]["project_id"],
     "private_key_id": st.secrets["google_creds"]["private_key_id"],
@@ -567,8 +570,8 @@ def remove_player(player_id):
     "token_uri": st.secrets["google_creds"]["token_uri"],
     "auth_provider_x509_cert_url": st.secrets["google_creds"]["auth_provider_x509_cert_url"],
     "client_x509_cert_url": st.secrets["google_creds"]["client_x509_cert_url"],
-}
-  credencials = pygsheets.authorize(service_account_info=google_creds)
+}'''
+  credencials = pygsheets.authorize(service_file=json.loads(google_creds))
   archive = credencials.open_by_url('https://docs.google.com/spreadsheets/d/1t6mfBP4U_Z7EveB9lJg8ecVdA0eeGuSQVzwcrkIEedM')
   players_tb = archive.worksheet_by_title('players')
   performance_tb = archive.worksheet_by_title('performance_seasons')
